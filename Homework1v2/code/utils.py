@@ -96,6 +96,7 @@ def tinyImages(train_features, test_features, train_labels, test_labels, label_d
 
     for size in sizes:
         for neighbor in neighbors:
+            start = timeit.default_timer()
             train_resize = []
             for train in train_features:
                 resize = np.amin(imresize(train, size), axis=2).flatten()
@@ -106,6 +107,7 @@ def tinyImages(train_features, test_features, train_labels, test_labels, label_d
                 test_resize.append(resize)
             predicted = KNN_classifier(train_resize, train_labels, test_resize, neighbor)
             accuracy.append(reportAccuracy(test_labels, predicted))
+            runtime.append(timeit.default_timer() - start)
     
     classResult = accuracy + runtime
     return classResult
