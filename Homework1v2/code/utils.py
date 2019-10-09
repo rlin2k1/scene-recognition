@@ -118,7 +118,7 @@ def main():
     # cv2.waitKey(0)
     #-----------------------------------------------------------------------------------------------
 
-    rootdir = os.getcwd()[:-4] + '/data'
+    rootdir = os.getcwd()[:-4] + 'data'
     train_features = []
     test_features = []
     train_labels = []
@@ -127,6 +127,7 @@ def main():
 
     for subdir, dirs, files in os.walk(rootdir):
         for file in files:
+            print(os.path.join(subdir, file))
             split = subdir.split('/')
             label = split[-1]
             train_or_test = split[-2]
