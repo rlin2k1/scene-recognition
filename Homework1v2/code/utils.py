@@ -102,10 +102,10 @@ def tinyImages(train_features, test_features, train_labels, test_labels, label_d
                 train_resize.append(resize)
             test_resize = []
             for test in test_features:
-                resize = np.amin(imresize(train, size), axis=2).flatten()
+                resize = np.amin(imresize(test, size), axis=2).flatten()
                 test_resize.append(resize)
             predicted = KNN_classifier(train_resize, train_labels, test_resize, neighbor)
-            accuracy.append(predicted)
+            accuracy.append(reportAccuracy(test_labels, predicted))
     
     classResult = accuracy + runtime
     return classResult
@@ -130,6 +130,7 @@ def main():
     test_features = []
     train_labels = []
     test_labels = []
+    # Slice Label Dict to Improve Testing Speed
     label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])
     for tt in os.listdir(rootdir):
         folder = os.path.join(rootdir, tt)
