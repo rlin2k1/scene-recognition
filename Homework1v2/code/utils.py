@@ -138,10 +138,10 @@ def main():
             else:
                 index = label_dict.index(label)
             if train_or_test == 'train':
-                train_features.append(cv2.imread(os.path.join(subdir, file).astype(np.float32) / 255))
+                train_features.append(cv2.imread(os.path.join(subdir, file)).astype(np.float32) / 255)
                 train_labels.append(index)
             elif train_or_test == 'test':
-                test_features.append(cv2.imread(os.path.join(subdir, file).astype(np.float32) / 255))
+                test_features.append(cv2.imread(os.path.join(subdir, file)).astype(np.float32) / 255)
                 test_labels.append(index)
 
     # print(train_features)
