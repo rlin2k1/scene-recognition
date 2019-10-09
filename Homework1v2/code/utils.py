@@ -124,14 +124,15 @@ def main():
     train_labels = []
     test_labels = []
     label_dict = []
-
+    
     for subdir, dirs, files in os.walk(rootdir):
         for file in files:
-            print(os.path.join(subdir, file))
             split = subdir.split('/')
-            label = split[-1]
+            label = split[-1].lower()
             train_or_test = split[-2]
             index = -1
+            if label in ['test', 'data', 'train']:
+                continue
             
             if label not in label_dict:
                 label_dict.append(label)
@@ -144,6 +145,10 @@ def main():
             elif train_or_test == 'test':
                 test_features.append(cv2.imread(os.path.join(subdir, file)).astype(np.float32) / 255)
                 test_labels.append(index)
+    print(label_dict)
+    print(len(label_dict))
+    print(test_labels)
+    print(train_labels)
 
     # print(train_features)
     # print(train_labels)
