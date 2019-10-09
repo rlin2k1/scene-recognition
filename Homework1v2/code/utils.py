@@ -1,14 +1,19 @@
 import cv2
 import numpy as np
 import timeit
+import os
 from sklearn import neighbors, svm, cluster
 
 def imresize(input_image, target_size):
     # resizes the input image to a new image of size [target_size, target_size]. normalizes the output image
-    # to be zero-mean, and in the [-1, 1] range.
+    # to be zero-mean with unit variance
     dim = (target_size, target_size)
     output_image = cv2.resize(input_image, dim)
-    output_image = cv2.normalize(output_image, None, alpha=-1, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    # this version ensures that the range is between -1 and 1 but does not ensure the output is 0 mean
+    #output_image = cv2.normalize(output_image, None, alpha=-1, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    mean, std = cv2.meanStdDev(output_image)
+    output_image -= mean[0]
+    output_image /= std[0]
     return output_image
 
 def reportAccuracy(true_labels, predicted_labels, label_dict = None):
@@ -26,7 +31,8 @@ def reportAccuracy(true_labels, predicted_labels, label_dict = None):
     for i in range(num_predictions):
         if true_labels[i] == predicted_labels[i]:
             num_correct_predictions = num_correct_predictions + 1
-    accuracy = num_correct_predictions / num_predictions
+    # doing this conversion so it works with Python 2 as well
+    accuracy = float(num_correct_predictions) / num_predictions
     return accuracy
 
 def buildDict(train_images, dict_size, feature_type, clustering_type):
@@ -101,7 +107,7 @@ def tinyImages(train_features, test_features, train_labels, test_labels, label_d
 # TESTING
 # ---------------------------------------------------------------------------- #
 def main():
-    # image = cv2.imread('../data/train/bedroom/image_0001.jpg')
+    # image = cv2.imread('../data/train/bedroom/image_0001.jpg').astype(np.float32) / 255
     # cv2.imshow('Unchanged', image)
     # cv2.waitKey(0)
     # cv2.imshow('Changed', imresize(image, 8))
@@ -111,7 +117,7 @@ def main():
     # cv2.imshow('Changed', imresize(image, 32))
     # cv2.waitKey(0)
     #-----------------------------------------------------------------------------------------------
-    import os
+
     rootdir = os.getcwd()[:-4] + '/data'
     train_features = []
     test_features = []
@@ -132,10 +138,10 @@ def main():
             else:
                 index = label_dict.index(label)
             if train_or_test == 'train':
-                train_features.append(cv2.imread(os.path.join(subdir, file)))
+                train_features.append(cv2.imread(os.path.join(subdir, file).astype(np.float32) / 255))
                 train_labels.append(index)
             elif train_or_test == 'test':
-                test_features.append(cv2.imread(os.path.join(subdir, file)))
+                test_features.append(cv2.imread(os.path.join(subdir, file).astype(np.float32) / 255))
                 test_labels.append(index)
 
     # print(train_features)
@@ -143,7 +149,6 @@ def main():
     # print(np.array(train_features[0]).shape)
     
     print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
-
 
 if __name__ == "__main__":
     main()
