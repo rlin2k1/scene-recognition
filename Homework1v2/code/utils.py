@@ -1,8 +1,8 @@
 import cv2
 import numpy as np
 import timeit
-import sys
 import os
+import sys
 from sklearn import neighbors, svm, cluster
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -130,32 +130,26 @@ def main():
     test_features = []
     train_labels = []
     test_labels = []
-    label_dict = []
-    
-    for subdir, dirs, files in os.walk(rootdir):
-        for file in files:
-            split = subdir.split('/')
-            label = split[-1].lower()
-            train_or_test = split[-2]
-            index = -1
-            if label in ['test', 'data', 'train']:
+    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])
+    for tt in os.listdir(rootdir):
+        folder = os.path.join(rootdir, tt)
+        for f in os.listdir(folder):
+            if f.lower() not in label_dict:
                 continue
-            
-            if label not in label_dict:
-                label_dict.append(label)
-                index = len(label_dict) - 1
-            else:
-                index = label_dict.index(label)
-            if train_or_test == 'train':
-                train_features.append(cv2.imread(os.path.join(subdir, file)).astype(np.float32) / 255)
-                train_labels.append(index)
-            elif train_or_test == 'test':
-                test_features.append(cv2.imread(os.path.join(subdir, file)).astype(np.float32) / 255)
-                test_labels.append(index)
-
-    # print(train_features)
+            for file in os.listdir(os.path.join(folder, f)):
+                index = label_dict.index(f.lower())
+                if tt == 'train':
+                    train_features.append(cv2.imread(os.path.join(folder, f, file)).astype(np.float32) / 255)
+                    train_labels.append(index)
+                elif tt == 'test':
+                    test_features.append(cv2.imread(os.path.join(folder, f, file)).astype(np.float32) / 255)
+                    test_labels.append(index)
+                    
+    # print(label_dict)
+    # print(len(label_dict))
+    # print(test_labels)
     # print(train_labels)
-    # print(np.array(train_features[0]).shape)
+
     print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
 
 if __name__ == "__main__":
