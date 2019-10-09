@@ -28,14 +28,7 @@ def reportAccuracy(true_labels, predicted_labels, label_dict = None):
     # label_dict is a 15x1 cell array where each entry is a string
     # containing the name of that category. WE DO NOT NEED THIS. ONLY FOR TA USE
     # accuracy is a scalar, defined in the spec (in %)
-    num_correct_predictions = 0
-    num_predictions = len(predicted_labels)
-    for i in range(num_predictions):
-        if true_labels[i] == predicted_labels[i]:
-            num_correct_predictions = num_correct_predictions + 1
-    # doing this conversion so it works with Python 2 as well
-    accuracy = float(num_correct_predictions) / num_predictions
-    return accuracy
+    return float(sum(1 for p, t in zip(true_labels, predicted_labels) if p == t)) / len(predicted_labels)
 
 def buildDict(train_images, dict_size, feature_type, clustering_type):
     # this function will sample descriptors from the training images,
