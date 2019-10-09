@@ -1,5 +1,5 @@
 import cv2
-import numpy
+import numpy as np
 import timeit
 from sklearn import neighbors, svm, cluster
 
@@ -70,7 +70,7 @@ def KNN_classifier(train_features, train_labels, test_features, num_neighbors):
     predicted_categories = neigh.predict(test_features)
     return predicted_categories
 
-def tinyImages(train_features, test_features, train_labels, test_labels, label_dict):
+def tinyImages(train_features, test_features, train_labels, test_labels, label_dict = None):
     # train_features is a nx1 array of images
     # test_features is a nx1 array of images
 
@@ -85,13 +85,14 @@ def tinyImages(train_features, test_features, train_labels, test_labels, label_d
 
     train_resize = []
     for train in train_features:
-        resize = imresize(train, 8)
+        resize = np.amin(imresize(train, 8), axis=2).flatten()
         train_resize.append(resize)
     test_resize = []
     for test in test_features:
-        resize = imresize(train, 8)
+        resize = np.amin(imresize(train, 8), axis=2).flatten()
         test_resize.append(resize)
     predicted = KNN_classifier(train_resize, train_labels, test_resize, 1)
+    accuracy.append(predicted)
     
     classResult = accuracy + runtime
     return classResult
@@ -100,15 +101,49 @@ def tinyImages(train_features, test_features, train_labels, test_labels, label_d
 # TESTING
 # ---------------------------------------------------------------------------- #
 def main():
-    image = cv2.imread('../data/train/bedroom/image_0001.jpg')
-    cv2.imshow('Unchanged', image)
-    cv2.waitKey(0)
-    cv2.imshow('Changed', imresize(image, 8))
-    cv2.waitKey(0)
-    cv2.imshow('Changed', imresize(image, 16))
-    cv2.waitKey(0)
-    cv2.imshow('Changed', imresize(image, 32))
-    cv2.waitKey(0)
+    # image = cv2.imread('../data/train/bedroom/image_0001.jpg')
+    # cv2.imshow('Unchanged', image)
+    # cv2.waitKey(0)
+    # cv2.imshow('Changed', imresize(image, 8))
+    # cv2.waitKey(0)
+    # cv2.imshow('Changed', imresize(image, 16))
+    # cv2.waitKey(0)
+    # cv2.imshow('Changed', imresize(image, 32))
+    # cv2.waitKey(0)
+    #-----------------------------------------------------------------------------------------------
+    import os
+    rootdir = os.getcwd()[:-4] + '/data'
+    train_features = []
+    test_features = []
+    train_labels = []
+    test_labels = []
+    label_dict = []
+
+    for subdir, dirs, files in os.walk(rootdir):
+        for file in files:
+            split = subdir.split('/')
+            label = split[-1]
+            train_or_test = split[-2]
+            index = -1
+            
+            if label not in label_dict:
+                label_dict.append(label)
+                index = len(label_dict) - 1
+            else:
+                index = label_dict.index(label)
+            if train_or_test == 'train':
+                train_features.append(cv2.imread(os.path.join(subdir, file)))
+                train_labels.append(index)
+            elif train_or_test == 'test':
+                test_features.append(cv2.imread(os.path.join(subdir, file)))
+                test_labels.append(index)
+
+    # print(train_features)
+    # print(train_labels)
+    # print(np.array(train_features[0]).shape)
+    
+    print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
+
 
 if __name__ == "__main__":
     main()
