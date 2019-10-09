@@ -1,8 +1,10 @@
 import cv2
 import numpy as np
 import timeit
+import sys
 import os
 from sklearn import neighbors, svm, cluster
+np.set_printoptions(threshold=sys.maxsize)
 
 def imresize(input_image, target_size):
     # resizes the input image to a new image of size [target_size, target_size]. normalizes the output image
@@ -86,19 +88,24 @@ def tinyImages(train_features, test_features, train_labels, test_labels, label_d
     # label_dict is a 15x1 array of strings, containing the names of the labels
     # classResult is a 18x1 array, containing accuracies and runtimes
     # We have NINE Tests. With 2 Values: Accuracy and Runtime for a Total of 18.
+    sizes = [8, 16, 32]
+    neighbors = [1, 3, 6]
+
     accuracy = []
     runtime = []
 
-    train_resize = []
-    for train in train_features:
-        resize = np.amin(imresize(train, 8), axis=2).flatten()
-        train_resize.append(resize)
-    test_resize = []
-    for test in test_features:
-        resize = np.amin(imresize(train, 8), axis=2).flatten()
-        test_resize.append(resize)
-    predicted = KNN_classifier(train_resize, train_labels, test_resize, 1)
-    accuracy.append(predicted)
+    for size in sizes:
+        for neighbor in neighbors:
+            train_resize = []
+            for train in train_features:
+                resize = np.amin(imresize(train, size), axis=2).flatten()
+                train_resize.append(resize)
+            test_resize = []
+            for test in test_features:
+                resize = np.amin(imresize(train, size), axis=2).flatten()
+                test_resize.append(resize)
+            predicted = KNN_classifier(train_resize, train_labels, test_resize, neighbor)
+            accuracy.append(predicted)
     
     classResult = accuracy + runtime
     return classResult
@@ -145,15 +152,10 @@ def main():
             elif train_or_test == 'test':
                 test_features.append(cv2.imread(os.path.join(subdir, file)).astype(np.float32) / 255)
                 test_labels.append(index)
-    print(label_dict)
-    print(len(label_dict))
-    print(test_labels)
-    print(train_labels)
 
     # print(train_features)
     # print(train_labels)
     # print(np.array(train_features[0]).shape)
-    
     print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
 
 if __name__ == "__main__":
