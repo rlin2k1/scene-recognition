@@ -42,6 +42,9 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
 
     # the output 'vocabulary' should be dict_size x d, where d is the 
     # dimention of the feature. each row is a cluster centroid / visual word.
+    
+    # Alex noted during discussion that only kmeans returns centroids and that for AHC, we must
+    # determine the centroid by finding the nearest neighbor to the cluster avg
     return vocabulary
 
 def computeBow(image, vocabulary, feature_type):
@@ -135,6 +138,10 @@ def main():
             for file in os.listdir(os.path.join(folder, f)):
                 index = label_dict.index(f.lower())
                 if tt == 'train':
+                    # I'm not in a position to test it rn, but we should maybe be passing 
+                    # cv2.IMREAD_GRAYSCALE as an argument to imread (remember the triple values).
+                    # Also, I'm starting to think it would make more sense to do the image conversion
+                    # in tinyImages instead.
                     train_features.append(cv2.imread(os.path.join(folder, f, file)).astype(np.float32) / 255)
                     train_labels.append(index)
                 elif tt == 'test':
