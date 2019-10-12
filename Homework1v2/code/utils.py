@@ -150,6 +150,7 @@ def computeBow(image, vocabulary, feature_type):
     
     #return Bow
 
+# remember that the following two functions were in classifiers.py to begin with!
 def KNN_classifier(train_features, train_labels, test_features, num_neighbors):
     # outputs labels for all testing images
 
@@ -165,6 +166,54 @@ def KNN_classifier(train_features, train_labels, test_features, num_neighbors):
     neigh = neighbors.KNeighborsClassifier(n_neighbors=num_neighbors)
     neigh.fit(train_features, train_labels)
     predicted_categories = neigh.predict(test_features)
+    return predicted_categories
+
+def SVM_classifier(train_features, train_labels, test_features, is_linear, svm_lambda):
+    # this function will train a linear svm for every category (i.e. one vs all)
+    # and then use the learned linear classifiers to predict the category of
+    # every test image. every test feature will be evaluated with all 15 svms
+    # and the most confident svm will "win". confidence, or distance from the
+    # margin, is w*x + b where '*' is the inner product or dot product and w and
+    # b are the learned hyperplane parameters.
+
+    # train_features is an n x d matrix, where d is the dimensionality of
+    # the feature representation.
+    # train_labels is an n x 1 array, where each entry is an integer 
+    # indicating the ground truth category for each training image.
+    # test_features is an m x d matrix, where d is the dimensionality of the
+    # feature representation. (you can assume m=n unless you modified the 
+    # starter code)
+    # is_linear is a boolean. If true, you will train linear SVMs. Otherwise, you 
+    # will use SVMs with a Radial Basis Function (RBF) Kernel.
+    # lambda is a scalar, the value of the regularizer for the SVMs
+    # predicted_categories is an m x 1 array, where each entry is an integer
+    # indicating the predicted category for each test image.
+    krnl = 'linear' if is_linear else 'rbf'
+    uniq_labels = sorted(np.unique(np.array(train_labels)))
+    class_probs = defaultdict(list)
+    for l in uniq_labels:
+        print("Training SVM for {}".format(l))
+        # Should in-class membership be labeled 1 or x?
+        onevall_labels = [1 if x == l else -1 for x in train_labels]
+        clf = svm.SVC(C=svm_lambda, kernel=krnl, probability=True, gamma='scale').fit(train_features, onevall_labels)
+        # get probability of in-class label
+        print(clf.classes_)
+        class_pred = clf.predict_proba(test_features)
+        print(class_pred[0:5])
+        class_probs[l] = [p[1] for p in class_pred]
+    # extract maximum prob for each element of test features and assign to that label
+    num_testfs = len(test_features)
+    first_label = uniq_labels[0]
+    predicted_categories = [first_label] * num_testfs
+    max_probs = class_probs[first_label]
+    for ii in range(num_testfs):
+        for l in uniq_labels:
+            if l == first_label:
+                continue
+            cprob = class_probs[l][ii]
+            if cprob > max_probs[ii]:
+                predicted_categories[ii] = l
+                max_probs[ii] = cprob
     return predicted_categories
 
 def tinyImages(train_features, test_features, train_labels, test_labels, label_dict = None):
@@ -239,8 +288,9 @@ def main():
 
     print('Done reading in all images')
 
+
     # If there's a saved vocabulary, assume everything is good and use it for classification
-    if os.path.exists('../vocab1.pkl'):
+    '''if os.path.exists('../vocab1.pkl'):
         print('Reusing saved buildDict output')
         vocab = []
         with open('../vocab1.pkl', 'rb') as f:
@@ -256,14 +306,33 @@ def main():
         runtime.append(timeit.default_timer() - start)
         print(accuracy)
         print(runtime)
-        sys.exit(1)
+        sys.exit(1)'''
 
+    if os.path.exists('../vocab1.pkl'):
+        vocab = []
+        with open('../vocab1.pkl', 'rb') as f:
+            vocab = pickle.load(f)
+        train_fs = [computeBow(tf, vocab, 'surf') for tf in train_features]
+        test_fs = [computeBow(tf, vocab, 'surf') for tf in test_features]
+        start = timeit.default_timer()
+        lin = False
+        c = .1
+        predicted = SVM_classifier(train_fs, train_labels, test_fs, lin, c)
+        accuracy = []
+        runtime = []
+        accuracy.append(reportAccuracy(test_labels, predicted))
+        runtime.append(timeit.default_timer() - start)
+        print(accuracy)
+        print(runtime)
+        sys.exit(1)
+    
     #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
     dict_size = 20
     feature_type = "surf"
     clustering_type = "kmeans"
     vocab = buildDict(train_features, dict_size, feature_type, clustering_type)
     pickle.dump(vocab, open( "../vocab1.pkl", "wb" ))
+    
 
 if __name__ == "__main__":
     main()
