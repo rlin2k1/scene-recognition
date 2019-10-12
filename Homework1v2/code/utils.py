@@ -62,7 +62,7 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
                 desc.append(i)
     elif feature_type == "surf":
         for image in train_images:
-            surf = cv2.xfeatures2d.SURF_create(nfeatures=50)
+            surf = cv2.xfeatures2d.SURF_create(50)
             _, des1 = surf.detectAndCompute(image,None)
             # Some images have more descriptors than others
             #print(len(des1))
@@ -72,7 +72,7 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
                 desc.append(i)
     elif feature_type == "orb":
         for image in train_images:
-            orb = cv2.ORB_create(nfeatures=100)
+            orb = cv2.ORB_create(nfeatures=30)
             kp = orb.detect(image, None)
             _, des1 = orb.compute(image, kp)
             if des1 is None:
@@ -140,7 +140,6 @@ def computeBow(image, vocabulary, feature_type):
             return [0] * len(vocabulary)
     else:
         return [0] * len(vocabulary)
-    print(len(des1))
 
     for x in des1:
         bow[np.array(np.linalg.norm(x - vocabulary, axis=1)).argmin()] += 1
@@ -232,34 +231,39 @@ def main():
             for file in os.listdir(os.path.join(folder, f)):
                 index = label_dict.index(f.lower())
                 if tt == 'train':
-                    # I'm not in a position to test it rn, but we should maybe be passing 
-                    # cv2.IMREAD_GRAYSCALE as an argument to imread (remember the triple values).
-                    # Also, I'm starting to think it would make more sense to do the image conversion
-                    # in tinyImages instead.
-                    #print(cv2.imread(os.path.join(folder, f, file), cv2.IMREAD_GRAYSCALE))
-                    #print(cv2.imread(os.path.join(folder, f, file)))
-                    #sys.exit(1)
                     train_features.append(cv2.imread(os.path.join(folder, f, file), cv2.IMREAD_GRAYSCALE))
                     train_labels.append(index)
                 elif tt == 'test':
                     test_features.append(cv2.imread(os.path.join(folder, f, file), cv2.IMREAD_GRAYSCALE))
                     test_labels.append(index)
 
+    print('Done reading in all images')
+
     # If there's a saved vocabulary, assume everything is good and use it for classification
-    if os.path.exists('../data/vocab.pkl'):
+    if os.path.exists('../vocab1.pkl'):
         print('Reusing saved buildDict output')
         vocab = []
-        with open('../data/vocab.pkl', 'rb') as f:
+        with open('../vocab1.pkl', 'rb') as f:
             vocab = pickle.load(f)
-        print(computeBow(cv2.imread('../data/train/Forest/image_0006.jpg', cv2.IMREAD_GRAYSCALE), vocab, 'sift'))
+        start = timeit.default_timer()
+        train_fs = [computeBow(tf, vocab, 'surf') for tf in train_features]
+        test_fs = [computeBow(tf, vocab, 'surf') for tf in test_features]
+        print('Done computing BOW representations')
+        predicted = KNN_classifier(train_fs, train_labels, test_fs, 9)
+        accuracy = []
+        runtime = []
+        accuracy.append(reportAccuracy(test_labels, predicted))
+        runtime.append(timeit.default_timer() - start)
+        print(accuracy)
+        print(runtime)
         sys.exit(1)
 
     #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
     dict_size = 20
-    feature_type = "sift"
-    clustering_type = "hierarchical"
+    feature_type = "surf"
+    clustering_type = "kmeans"
     vocab = buildDict(train_features, dict_size, feature_type, clustering_type)
-    pickle.dump(vocab, open( "../data/vocab.pkl", "wb" ))
+    pickle.dump(vocab, open( "../vocab1.pkl", "wb" ))
 
 if __name__ == "__main__":
     main()
