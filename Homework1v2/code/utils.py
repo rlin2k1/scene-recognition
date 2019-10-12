@@ -5,6 +5,7 @@ import os
 import sys
 from collections import defaultdict
 from sklearn import neighbors, svm, cluster
+import pickle
 np.set_printoptions(threshold=sys.maxsize)
 
 def imresize(input_image, target_size):
@@ -50,7 +51,7 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
     desc = []
     if feature_type == "sift":
         for image in train_images:
-            sift = cv2.xfeatures2d.SIFT_create()
+            sift = cv2.xfeatures2d.SIFT_create(nfeatures=50)
             _, des1 = sift.detectAndCompute(image,None)
             if des1 is None:
                 continue
@@ -81,26 +82,41 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
                 desc.append(i)
     else:
         return None
-    #print(len(desc))
 
-    vocabulary = []
+    #print(len(desc))
+    #print("Before")
+    vocabulary = [[]] * dict_size
     if clustering_type == "kmeans":
         kmeans = cluster.KMeans(n_clusters=dict_size).fit(desc)
         vocabulary = kmeans.cluster_centers_
     elif clustering_type == "hierarchical":
         kmeans = cluster.AgglomerativeClustering(n_clusters=dict_size).fit(desc)
         labels = kmeans.labels_
+        cluster_avgs = []
         lmap = defaultdict(list)
         for idx, l in enumerate(labels):
             lmap[l].append(desc[idx])
         for n in range(dict_size): 
-            cluster_avgs.append(np.mean(lmap[l]))
-        print(cluster_avgs)
-        sys.exit(1)
+            cluster_avgs.append(np.mean(lmap[n], axis=0))
+        # for n in range(dict_size): 
+        #     temp = []
+        #     for i in range(len(lmap[0][0])):
+        #         temp.append(np.mean([lmap[n][x][i] for x in range(len(lmap[n]))]))
+        #     cluster_avgs.append(temp)
+        #print(len(cluster_avgs[0]))
+        distances = [float('inf')] * dict_size
+        for idx, l in enumerate(labels):
+            dist = np.linalg.norm(desc[idx] - cluster_avgs[l])
+            print(dist)
+            if dist < distances[l]:
+                distances[l] = dist
+                vocabulary[l] = desc[idx]
+        #print(centroids)
+        #sys.exit(1)
     else:
         return None
-    print(len(vocabulary))
-    print(len(vocabulary[0]))
+    
+    pickle.dump(vocabulary, open( "vocabulary.p", "wb" ))
     return vocabulary
 
 def computeBow(image, vocabulary, feature_type):
@@ -185,7 +201,7 @@ def main():
     train_labels = []
     test_labels = []
     # Slice Label Dict to Improve Testing Speed
-    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])[0:4]
+    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])[0:2]
     for tt in os.listdir(rootdir):
         folder = os.path.join(rootdir, tt)
         for f in os.listdir(folder):
@@ -214,7 +230,7 @@ def main():
 
     #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
     dict_size = 20
-    feature_type = "sift"
+    feature_type = "orb"
     clustering_type = "hierarchical"
     print(buildDict(train_features, dict_size, feature_type, clustering_type))
 
