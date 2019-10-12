@@ -3,6 +3,7 @@ import numpy as np
 import timeit
 import os
 import sys
+from collections import defaultdict
 from sklearn import neighbors, svm, cluster
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -51,14 +52,55 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
         for image in train_images:
             sift = cv2.xfeatures2d.SIFT_create()
             _, des1 = sift.detectAndCompute(image,None)
+            if des1 is None:
+                continue
             # Some images have more descriptors than others
-            print(len(des1))
+            #print(len(des1))
             for i in des1:
                 desc.append(i)
+    elif feature_type == "surf":
+        for image in train_images:
+            surf = cv2.xfeatures2d.SURF_create()
+            _, des1 = surf.detectAndCompute(image,None)
+            # Some images have more descriptors than others
+            #print(len(des1))
+            if des1 is None:
+                continue
+            for i in des1:
+                desc.append(i)
+    elif feature_type == "orb":
+        for image in train_images:
+            orb = cv2.ORB_create()
+            kp = orb.detect(image, None)
+            _, des1 = orb.compute(image, kp)
+            if des1 is None:
+                continue
+            # Some images have more descriptors than others
+            #print(len(des1))
+            for i in des1:
+                desc.append(i)
+    else:
+        return None
     #print(len(desc))
-    
-    kmeans = cluster.KMeans(n_clusters=dict_size).fit(desc)
-    vocabulary = kmeans.cluster_centers_
+
+    vocabulary = []
+    if clustering_type == "kmeans":
+        kmeans = cluster.KMeans(n_clusters=dict_size).fit(desc)
+        vocabulary = kmeans.cluster_centers_
+    elif clustering_type == "hierarchical":
+        kmeans = cluster.AgglomerativeClustering(n_clusters=dict_size).fit(desc)
+        labels = kmeans.labels_
+        lmap = defaultdict(list)
+        for idx, l in enumerate(labels):
+            lmap[l].append(desc[idx])
+        for n in range(dict_size): 
+            cluster_avgs.append(np.mean(lmap[l]))
+        print(cluster_avgs)
+        sys.exit(1)
+    else:
+        return None
+    print(len(vocabulary))
+    print(len(vocabulary[0]))
     return vocabulary
 
 def computeBow(image, vocabulary, feature_type):
@@ -173,7 +215,7 @@ def main():
     #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
     dict_size = 20
     feature_type = "sift"
-    clustering_type = "kmeans"
+    clustering_type = "hierarchical"
     print(buildDict(train_features, dict_size, feature_type, clustering_type))
 
 if __name__ == "__main__":
