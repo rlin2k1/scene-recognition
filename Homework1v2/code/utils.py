@@ -51,7 +51,8 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
     desc = []
     if feature_type == "sift":
         for image in train_images:
-            sift = cv2.xfeatures2d.SIFT_create(nfeatures=50)
+            # double check later that this restriction makes sense
+            sift = cv2.xfeatures2d.SIFT_create(nfeatures=25)
             _, des1 = sift.detectAndCompute(image,None)
             if des1 is None:
                 continue
@@ -61,7 +62,7 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
                 desc.append(i)
     elif feature_type == "surf":
         for image in train_images:
-            surf = cv2.xfeatures2d.SURF_create()
+            surf = cv2.xfeatures2d.SURF_create(nfeatures=50)
             _, des1 = surf.detectAndCompute(image,None)
             # Some images have more descriptors than others
             #print(len(des1))
@@ -71,7 +72,7 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
                 desc.append(i)
     elif feature_type == "orb":
         for image in train_images:
-            orb = cv2.ORB_create()
+            orb = cv2.ORB_create(nfeatures=100)
             kp = orb.detect(image, None)
             _, des1 = orb.compute(image, kp)
             if des1 is None:
@@ -83,7 +84,7 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
     else:
         return None
 
-    #print(len(desc))
+    print(len(desc))
     #print("Before")
     vocabulary = [[]] * dict_size
     if clustering_type == "kmeans":
@@ -98,25 +99,17 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
             lmap[l].append(desc[idx])
         for n in range(dict_size): 
             cluster_avgs.append(np.mean(lmap[n], axis=0))
-        # for n in range(dict_size): 
-        #     temp = []
-        #     for i in range(len(lmap[0][0])):
-        #         temp.append(np.mean([lmap[n][x][i] for x in range(len(lmap[n]))]))
-        #     cluster_avgs.append(temp)
-        #print(len(cluster_avgs[0]))
         distances = [float('inf')] * dict_size
         for idx, l in enumerate(labels):
             dist = np.linalg.norm(desc[idx] - cluster_avgs[l])
-            print(dist)
             if dist < distances[l]:
                 distances[l] = dist
                 vocabulary[l] = desc[idx]
-        #print(centroids)
-        #sys.exit(1)
     else:
         return None
-    
-    pickle.dump(vocabulary, open( "vocabulary.p", "wb" ))
+
+    print(len(vocabulary))
+    print(len(vocabulary[0]))
     return vocabulary
 
 def computeBow(image, vocabulary, feature_type):
@@ -127,7 +120,36 @@ def computeBow(image, vocabulary, feature_type):
     # used to create the vocabulary
 
     # BOW is the new image representation, a normalized histogram
-    return Bow
+    des1 = []
+    bow = [0.0] * len(vocabulary)
+    if feature_type == "sift":
+        sift = cv2.xfeatures2d.SIFT_create()
+        _, des1 = sift.detectAndCompute(image,None)
+        if des1 is None:
+            return [0] * len(vocabulary)
+    elif feature_type == "surf":
+        surf = cv2.xfeatures2d.SURF_create()
+        _, des1 = surf.detectAndCompute(image,None)
+        if des1 is None:
+            return [0] * len(vocabulary)
+    elif feature_type == "orb":
+        orb = cv2.ORB_create()
+        kp = orb.detect(image, None)
+        _, des1 = orb.compute(image, kp)
+        if des1 is None:
+            return [0] * len(vocabulary)
+    else:
+        return [0] * len(vocabulary)
+    print(len(des1))
+
+    for x in des1:
+        bow[np.array(np.linalg.norm(x - vocabulary, axis=1)).argmin()] += 1
+    return np.array(bow) * 4000 / (len(vocabulary) * len(vocabulary[0]))
+
+    # still need to normalize!!!
+    #return [np.abs(np.linalg.norm(x - vocabulary)).argmin(0) for x in des1]
+    
+    #return Bow
 
 def KNN_classifier(train_features, train_labels, test_features, num_neighbors):
     # outputs labels for all testing images
@@ -201,7 +223,7 @@ def main():
     train_labels = []
     test_labels = []
     # Slice Label Dict to Improve Testing Speed
-    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])[0:2]
+    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])
     for tt in os.listdir(rootdir):
         folder = os.path.join(rootdir, tt)
         for f in os.listdir(folder):
@@ -222,17 +244,22 @@ def main():
                 elif tt == 'test':
                     test_features.append(cv2.imread(os.path.join(folder, f, file), cv2.IMREAD_GRAYSCALE))
                     test_labels.append(index)
-                    
-    # print(label_dict)
-    # print(len(label_dict))
-    # print(test_labels)
-    # print(train_labels)
+
+    # If there's a saved vocabulary, assume everything is good and use it for classification
+    if os.path.exists('../data/vocab.pkl'):
+        print('Reusing saved buildDict output')
+        vocab = []
+        with open('../data/vocab.pkl', 'rb') as f:
+            vocab = pickle.load(f)
+        print(computeBow(cv2.imread('../data/train/Forest/image_0006.jpg', cv2.IMREAD_GRAYSCALE), vocab, 'sift'))
+        sys.exit(1)
 
     #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
     dict_size = 20
-    feature_type = "orb"
+    feature_type = "sift"
     clustering_type = "hierarchical"
-    print(buildDict(train_features, dict_size, feature_type, clustering_type))
+    vocab = buildDict(train_features, dict_size, feature_type, clustering_type)
+    pickle.dump(vocab, open( "../data/vocab.pkl", "wb" ))
 
 if __name__ == "__main__":
     main()
