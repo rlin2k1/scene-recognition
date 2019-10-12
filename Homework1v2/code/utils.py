@@ -142,6 +142,9 @@ def main():
                     # cv2.IMREAD_GRAYSCALE as an argument to imread (remember the triple values).
                     # Also, I'm starting to think it would make more sense to do the image conversion
                     # in tinyImages instead.
+                    #print(cv2.imread(os.path.join(folder, f, file), cv2.IMREAD_GRAYSCALE))
+                    print(cv2.imread(os.path.join(folder, f, file)))
+                    sys.exit(1)
                     train_features.append(cv2.imread(os.path.join(folder, f, file)))
                     train_labels.append(index)
                 elif tt == 'test':
@@ -153,7 +156,11 @@ def main():
     # print(test_labels)
     # print(train_labels)
 
-    print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
+    #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
+    dict_size = 50
+    feature_type = "surf"
+    clustering_type = "kmeans"
+    print(buildDict(train_features, dict_size, feature_type, clustering_type))
 
 if __name__ == "__main__":
     main()
