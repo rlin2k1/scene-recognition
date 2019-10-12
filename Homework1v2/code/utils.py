@@ -41,10 +41,24 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
     # clustering_type is one of "kmeans" or "hierarchical"
 
     # the output 'vocabulary' should be dict_size x d, where d is the 
-    # dimention of the feature. each row is a cluster centroid / visual word.
+    # dimension of the feature. each row is a cluster centroid / visual word.
     
     # Alex noted during discussion that only kmeans returns centroids and that for AHC, we must
     # determine the centroid by finding the nearest neighbor to the cluster avg
+    # Write and read from file to save time.
+    desc = []
+    if feature_type == "sift":
+        for image in train_images:
+            sift = cv2.xfeatures2d.SIFT_create()
+            _, des1 = sift.detectAndCompute(image,None)
+            # Some images have more descriptors than others
+            print(len(des1))
+            for i in des1:
+                desc.append(i)
+    #print(len(desc))
+    
+    kmeans = cluster.KMeans(n_clusters=dict_size).fit(desc)
+    vocabulary = kmeans.cluster_centers_
     return vocabulary
 
 def computeBow(image, vocabulary, feature_type):
@@ -129,7 +143,7 @@ def main():
     train_labels = []
     test_labels = []
     # Slice Label Dict to Improve Testing Speed
-    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])
+    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])[0:4]
     for tt in os.listdir(rootdir):
         folder = os.path.join(rootdir, tt)
         for f in os.listdir(folder):
@@ -143,12 +157,12 @@ def main():
                     # Also, I'm starting to think it would make more sense to do the image conversion
                     # in tinyImages instead.
                     #print(cv2.imread(os.path.join(folder, f, file), cv2.IMREAD_GRAYSCALE))
-                    print(cv2.imread(os.path.join(folder, f, file)))
-                    sys.exit(1)
-                    train_features.append(cv2.imread(os.path.join(folder, f, file)))
+                    #print(cv2.imread(os.path.join(folder, f, file)))
+                    #sys.exit(1)
+                    train_features.append(cv2.imread(os.path.join(folder, f, file), cv2.IMREAD_GRAYSCALE))
                     train_labels.append(index)
                 elif tt == 'test':
-                    test_features.append(cv2.imread(os.path.join(folder, f, file)))
+                    test_features.append(cv2.imread(os.path.join(folder, f, file), cv2.IMREAD_GRAYSCALE))
                     test_labels.append(index)
                     
     # print(label_dict)
@@ -157,8 +171,8 @@ def main():
     # print(train_labels)
 
     #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
-    dict_size = 50
-    feature_type = "surf"
+    dict_size = 20
+    feature_type = "sift"
     clustering_type = "kmeans"
     print(buildDict(train_features, dict_size, feature_type, clustering_type))
 
