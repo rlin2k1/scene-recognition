@@ -95,11 +95,11 @@ def tinyImages(train_features, test_features, train_labels, test_labels, label_d
             start = timeit.default_timer()
             train_resize = []
             for train in train_features:
-                resize = np.amin(imresize(train, size), axis=2).flatten()
+                resize = np.amin(imresize(train.astype(np.float32) / 255, size), axis=2).flatten()
                 train_resize.append(resize)
             test_resize = []
             for test in test_features:
-                resize = np.amin(imresize(test, size), axis=2).flatten()
+                resize = np.amin(imresize(test.astype(np.float32) / 255, size), axis=2).flatten()
                 test_resize.append(resize)
             predicted = KNN_classifier(train_resize, train_labels, test_resize, neighbor)
             accuracy.append(reportAccuracy(test_labels, predicted))
@@ -142,10 +142,10 @@ def main():
                     # cv2.IMREAD_GRAYSCALE as an argument to imread (remember the triple values).
                     # Also, I'm starting to think it would make more sense to do the image conversion
                     # in tinyImages instead.
-                    train_features.append(cv2.imread(os.path.join(folder, f, file)).astype(np.float32) / 255)
+                    train_features.append(cv2.imread(os.path.join(folder, f, file)))
                     train_labels.append(index)
                 elif tt == 'test':
-                    test_features.append(cv2.imread(os.path.join(folder, f, file)).astype(np.float32) / 255)
+                    test_features.append(cv2.imread(os.path.join(folder, f, file)))
                     test_labels.append(index)
                     
     # print(label_dict)
