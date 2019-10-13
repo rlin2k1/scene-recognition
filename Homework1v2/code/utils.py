@@ -8,20 +8,14 @@ from sklearn import neighbors, svm, cluster, multiclass
 import pickle
 np.set_printoptions(threshold=sys.maxsize)
 
-def imnormalize(img):
-    # this version ensures that the range is between -1 and 1 but does not ensure the output is 0 mean
-    #output_image = cv2.normalize(output_image, None, alpha=-1, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    mean, std = cv2.meanStdDev(img)
-    img -= mean[0]
-    img /= std[0]
-    return img
-
 def imresize(input_image, target_size):
     # resizes the input image to a new image of size [target_size, target_size]. normalizes the output image
     # to be zero-mean with unit variance
     dim = (target_size, target_size)
     output_image = cv2.resize(input_image, dim)
-    return imnormalize(output_image)
+    mean, std = cv2.meanStdDev(output_image)
+    output_image -= mean[0]
+    return output_image /= std[0]
 
 def reportAccuracy(true_labels, predicted_labels, label_dict = None):
     # generates and returns the accuracy of a model
@@ -90,17 +84,13 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
         kmeans = cluster.KMeans(n_clusters=dict_size).fit(desc)
         vocabulary = kmeans.cluster_centers_
     elif clustering_type == "hierarchical":
-        kmeans = cluster.AgglomerativeClustering(n_clusters=dict_size).fit(desc)
-        labels = kmeans.labels_
-        cluster_avgs = []
+        aggc = cluster.AgglomerativeClustering(n_clusters=dict_size).fit(desc)
         lmap = defaultdict(list)
-        for idx, l in enumerate(labels):
+        for idx, l in enumerate(aggc.labels_):
             lmap[l].append(desc[idx])
         cluster_avgs = [np.mean(lmap[n], axis=0) for n in range(dict_size)]
-        #for n in range(dict_size): 
-        #    cluster_avgs.append(np.mean(lmap[n], axis=0))
         distances = [float('inf')] * dict_size
-        for idx, l in enumerate(labels):
+        for idx, l in enumerate(aggc.labels_):
             dist = np.linalg.norm(desc[idx] - cluster_avgs[l])
             if dist < distances[l]:
                 distances[l] = dist
@@ -189,14 +179,8 @@ def SVM_classifier(train_features, train_labels, test_features, is_linear, svm_l
     # predicted_categories is an m x 1 array, where each entry is an integer
     # indicating the predicted category for each test image.
     krnl = 'linear' if is_linear else 'rbf'
-    uniq_labels = sorted(np.unique(np.array(train_labels)))
-    class_probs = defaultdict(list)
-
-    # HEYYYY!!!! It looks like there's a multi_class option for SVM in sklearn!
-    # Might as well use it and see how that goes!
     # According to the documentation, the default, ovr, "trains n_classes 
     # one-vs-rest classifiers", precisely fulfilling the spec's goal
-
     clf = multiclass.OneVsRestClassifier(svm.SVC(C=svm_lambda, kernel=krnl, probability=True, gamma='scale'), n_jobs=-1)
     print('Starting to fit')
     clf.fit(train_features, train_labels)
@@ -204,27 +188,6 @@ def SVM_classifier(train_features, train_labels, test_features, is_linear, svm_l
     predicted_categories = clf.predict(test_features)
     print(predicted_categories[0:100])
     print(len(predicted_categories))
-    '''for l in uniq_labels:
-        print("Training SVM for {}".format(l))
-        # Should in-class membership be labeled 1 or x?
-        onevall_labels = [1 if x == l else -1 for x in train_labels]
-        clf = svm.SVC(C=svm_lambda, kernel=krnl, probability=True, gamma='scale').fit(train_features, onevall_labels)
-        class_pred = clf.predict_proba(test_features)
-        print(class_pred[0:10])
-        class_probs[l] = [p[1] for p in class_pred]
-    # extract maximum prob for each element of test features and assign to that label
-    num_testfs = len(test_features)
-    first_label = uniq_labels[0]
-    predicted_categories = [first_label] * num_testfs
-    max_probs = class_probs[first_label]
-    for ii in range(num_testfs):
-        for l in uniq_labels:
-            if l == first_label:
-                continue
-            cprob = class_probs[l][ii]
-            if cprob > max_probs[ii]:
-                predicted_categories[ii] = l
-                max_probs[ii] = cprob'''
     return predicted_categories
 
 def tinyImages(train_features, test_features, train_labels, test_labels, label_dict = None):
@@ -246,15 +209,9 @@ def tinyImages(train_features, test_features, train_labels, test_labels, label_d
     for size in sizes:
         for neighbor in neighbors:
             start = timeit.default_timer()
-            train_resize = []
-            for train in train_features:
-                resize = np.amin(imresize(train.astype(np.float32) / 255, size), axis=2).flatten()
-                train_resize.append(resize)
-            test_resize = []
-            for test in test_features:
-                resize = np.amin(imresize(test.astype(np.float32) / 255, size), axis=2).flatten()
-                test_resize.append(resize)
-            predicted = KNN_classifier(train_resize, train_labels, test_resize, neighbor)
+            trainf = [np.amin(imresize(t.astype(np.float32)/255, size), axis=2).flatten() for t in train_features]
+            testf = [np.amin(imresize(t.astype(np.float32)/255, size), axis=2).flatten() for t in test_features]
+            predicted = KNN_classifier(trainf, train_labels, testf, neighbor)
             accuracy.append(reportAccuracy(test_labels, predicted))
             runtime.append(timeit.default_timer() - start)
     
@@ -327,8 +284,8 @@ def main():
         train_fs = [computeBow(tf, vocab, 'surf') for tf in train_features]
         test_fs = [computeBow(tf, vocab, 'surf') for tf in test_features]
         start = timeit.default_timer()
-        lin = False
-        c = .01
+        lin = True
+        c = .1
         predicted = SVM_classifier(train_fs, train_labels, test_fs, lin, c)
         accuracy = []
         runtime = []
