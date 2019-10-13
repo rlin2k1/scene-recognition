@@ -1,0 +1,18 @@
+Feature Type --- nFeatures --- Clustering --- Classifier Type --- Kernel --- Acc --- C --- dSize
+SURF			 inf		   kmeans		  SVM				  RBF		 .358	.01	   50
+"																		"	 .249	.001   50
+"																		"	 .359	1	   50
+SURF(ext)		"														"	 .533	.01	   100
+"																		"	 .532	.001   100
+"																		"	 .535	.1	   100
+"															"	  Linear	 .453	.01	   50
+"																		"	 .465	.001   50
+"																		"	 .443	1	   50
+"																		"	 .480	.01	   100
+SURF(ext)		"														"	 .509	.01	   100
+SIFT			inf			   kmeans		  SVM				  RBF		 .439	.1	   50
+"																		"	 .463	.01	   50
+"																		"	 .434	.001   50
+"															"	  Linear	 .462	.1	   50
+"																		"	 .452	.01	   50
+"																		"	 .457	.001   50

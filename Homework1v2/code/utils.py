@@ -8,17 +8,20 @@ from sklearn import neighbors, svm, cluster, multiclass
 import pickle
 np.set_printoptions(threshold=sys.maxsize)
 
+def imnormalize(img):
+    # this version ensures that the range is between -1 and 1 but does not ensure the output is 0 mean
+    #output_image = cv2.normalize(output_image, None, alpha=-1, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
+    mean, std = cv2.meanStdDev(img)
+    img -= mean[0]
+    img /= std[0]
+    return img
+
 def imresize(input_image, target_size):
     # resizes the input image to a new image of size [target_size, target_size]. normalizes the output image
     # to be zero-mean with unit variance
     dim = (target_size, target_size)
     output_image = cv2.resize(input_image, dim)
-    # this version ensures that the range is between -1 and 1 but does not ensure the output is 0 mean
-    #output_image = cv2.normalize(output_image, None, alpha=-1, beta=1, norm_type=cv2.NORM_MINMAX, dtype=cv2.CV_32F)
-    mean, std = cv2.meanStdDev(output_image)
-    output_image -= mean[0]
-    output_image /= std[0]
-    return output_image
+    return imnormalize(output_image)
 
 def reportAccuracy(true_labels, predicted_labels, label_dict = None):
     # generates and returns the accuracy of a model
@@ -52,21 +55,18 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
     if feature_type == "sift":
         for image in train_images:
             # double check later that this restriction makes sense
-            sift = cv2.xfeatures2d.SIFT_create(nfeatures=25)
+            # nfeatures=25
+            sift = cv2.xfeatures2d.SIFT_create()
             _, des1 = sift.detectAndCompute(image,None)
             if des1 is None:
                 continue
-            # Some images have more descriptors than others
-            #print(len(des1))
             for i in des1:
                 desc.append(i)
     elif feature_type == "surf":
         for image in train_images:
             # formerly 50
-            surf = cv2.xfeatures2d.SURF_create()
+            surf = cv2.xfeatures2d.SURF_create(extended=True)
             _, des1 = surf.detectAndCompute(image,None)
-            # Some images have more descriptors than others
-            #print(len(des1))
             if des1 is None:
                 continue
             for i in des1:
@@ -78,8 +78,6 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
             _, des1 = orb.compute(image, kp)
             if des1 is None:
                 continue
-            # Some images have more descriptors than others
-            #print(len(des1))
             for i in des1:
                 desc.append(i)
     else:
@@ -98,8 +96,9 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
         lmap = defaultdict(list)
         for idx, l in enumerate(labels):
             lmap[l].append(desc[idx])
-        for n in range(dict_size): 
-            cluster_avgs.append(np.mean(lmap[n], axis=0))
+        cluster_avgs = [np.mean(lmap[n], axis=0) for n in range(dict_size)]
+        #for n in range(dict_size): 
+        #    cluster_avgs.append(np.mean(lmap[n], axis=0))
         distances = [float('inf')] * dict_size
         for idx, l in enumerate(labels):
             dist = np.linalg.norm(desc[idx] - cluster_avgs[l])
@@ -127,20 +126,20 @@ def computeBow(image, vocabulary, feature_type):
         sift = cv2.xfeatures2d.SIFT_create()
         _, des1 = sift.detectAndCompute(image,None)
         if des1 is None:
-            return [0] * len(vocabulary)
+            return bow
     elif feature_type == "surf":
-        surf = cv2.xfeatures2d.SURF_create()
+        surf = cv2.xfeatures2d.SURF_create(extended=True)
         _, des1 = surf.detectAndCompute(image,None)
         if des1 is None:
-            return [0] * len(vocabulary)
+            return bow
     elif feature_type == "orb":
         orb = cv2.ORB_create()
         kp = orb.detect(image, None)
         _, des1 = orb.compute(image, kp)
         if des1 is None:
-            return [0] * len(vocabulary)
+            return bow
     else:
-        return [0] * len(vocabulary)
+        return bow
 
     for x in des1:
         bow[np.array(np.linalg.norm(x - vocabulary, axis=1)).argmin()] += 1
@@ -319,15 +318,16 @@ def main():
         print(accuracy)
         print(runtime)
         sys.exit(1)'''
-
-    '''if os.path.exists('../vocab1.pkl'):
+    fname = "../surfextinfk100.pkl"
+    if os.path.exists(fname):
         vocab = []
-        with open('../vocab1.pkl', 'rb') as f:
+        with open(fname, 'rb') as f:
             vocab = pickle.load(f)
+        print("Beginning BOVW and SVM classification")
         train_fs = [computeBow(tf, vocab, 'surf') for tf in train_features]
         test_fs = [computeBow(tf, vocab, 'surf') for tf in test_features]
         start = timeit.default_timer()
-        lin = True
+        lin = False
         c = .01
         predicted = SVM_classifier(train_fs, train_labels, test_fs, lin, c)
         accuracy = []
@@ -336,14 +336,14 @@ def main():
         runtime.append(timeit.default_timer() - start)
         print(accuracy)
         print(runtime)
-        sys.exit(1)'''
+        sys.exit(1)
     
     #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
     dict_size = 50
-    feature_type = "surf"
+    feature_type = "sift"
     clustering_type = "kmeans"
     vocab = buildDict(train_features, dict_size, feature_type, clustering_type)
-    pickle.dump(vocab, open( "../surfinfk50.pkl", "wb" ))
+    pickle.dump(vocab, open("../siftinfk50.pkl", "wb" ))
     
 
 if __name__ == "__main__":
