@@ -181,7 +181,7 @@ def SVM_classifier(train_features, train_labels, test_features, is_linear, svm_l
     krnl = 'linear' if is_linear else 'rbf'
     # According to the documentation, the default, ovr, "trains n_classes 
     # one-vs-rest classifiers", precisely fulfilling the spec's goal
-    clf = multiclass.OneVsRestClassifier(svm.SVC(C=svm_lambda, kernel=krnl, probability=True, gamma='scale'), n_jobs=-1)
+    clf = multiclass.OneVsRestClassifier(svm.SVC(C=svm_lambda, kernel=krnl, gamma='scale'), n_jobs=-1)
     print('Starting to fit')
     clf.fit(train_features, train_labels)
     print('Starting to predict')
@@ -239,7 +239,7 @@ def main():
     train_labels = []
     test_labels = []
     # Slice Label Dict to Improve Testing Speed
-    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])
+    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])[0:4]
     for tt in os.listdir(rootdir):
         folder = os.path.join(rootdir, tt)
         for f in os.listdir(folder):
@@ -256,37 +256,20 @@ def main():
 
     print('Done reading in all images')
 
-
-    # If there's a saved vocabulary, assume everything is good and use it for classification
-    '''if os.path.exists('../vocab1.pkl'):
-        print('Reusing saved buildDict output')
-        vocab = []
-        with open('../vocab1.pkl', 'rb') as f:
-            vocab = pickle.load(f)
-        start = timeit.default_timer()
-        train_fs = [computeBow(tf, vocab, 'surf') for tf in train_features]
-        test_fs = [computeBow(tf, vocab, 'surf') for tf in test_features]
-        print('Done computing BOW representations')
-        predicted = KNN_classifier(train_fs, train_labels, test_fs, 9)
-        accuracy = []
-        runtime = []
-        accuracy.append(reportAccuracy(test_labels, predicted))
-        runtime.append(timeit.default_timer() - start)
-        print(accuracy)
-        print(runtime)
-        sys.exit(1)'''
     fname = "../surfextinfk100.pkl"
+    # If there's a saved vocabulary, assume everything is good and use it for classification
     if os.path.exists(fname):
         vocab = []
         with open(fname, 'rb') as f:
             vocab = pickle.load(f)
-        print("Beginning BOVW and SVM classification")
+        print("Reusing saved buildDict output")
         train_fs = [computeBow(tf, vocab, 'surf') for tf in train_features]
         test_fs = [computeBow(tf, vocab, 'surf') for tf in test_features]
         start = timeit.default_timer()
         lin = True
         c = .1
         predicted = SVM_classifier(train_fs, train_labels, test_fs, lin, c)
+        #predicted = KNN_classifier(train_fs, train_labels, test_fs, 9)
         accuracy = []
         runtime = []
         accuracy.append(reportAccuracy(test_labels, predicted))
