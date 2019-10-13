@@ -4,7 +4,7 @@ import timeit
 import os
 import sys
 from collections import defaultdict
-from sklearn import neighbors, svm, cluster
+from sklearn import neighbors, svm, cluster, multiclass
 import pickle
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -62,7 +62,8 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
                 desc.append(i)
     elif feature_type == "surf":
         for image in train_images:
-            surf = cv2.xfeatures2d.SURF_create(50)
+            # formerly 50
+            surf = cv2.xfeatures2d.SURF_create()
             _, des1 = surf.detectAndCompute(image,None)
             # Some images have more descriptors than others
             #print(len(des1))
@@ -191,15 +192,26 @@ def SVM_classifier(train_features, train_labels, test_features, is_linear, svm_l
     krnl = 'linear' if is_linear else 'rbf'
     uniq_labels = sorted(np.unique(np.array(train_labels)))
     class_probs = defaultdict(list)
-    for l in uniq_labels:
+
+    # HEYYYY!!!! It looks like there's a multi_class option for SVM in sklearn!
+    # Might as well use it and see how that goes!
+    # According to the documentation, the default, ovr, "trains n_classes 
+    # one-vs-rest classifiers", precisely fulfilling the spec's goal
+
+    clf = multiclass.OneVsRestClassifier(svm.SVC(C=svm_lambda, kernel=krnl, probability=True, gamma='scale'), n_jobs=-1)
+    print('Starting to fit')
+    clf.fit(train_features, train_labels)
+    print('Starting to predict')
+    predicted_categories = clf.predict(test_features)
+    print(predicted_categories[0:100])
+    print(len(predicted_categories))
+    '''for l in uniq_labels:
         print("Training SVM for {}".format(l))
         # Should in-class membership be labeled 1 or x?
         onevall_labels = [1 if x == l else -1 for x in train_labels]
         clf = svm.SVC(C=svm_lambda, kernel=krnl, probability=True, gamma='scale').fit(train_features, onevall_labels)
-        # get probability of in-class label
-        print(clf.classes_)
         class_pred = clf.predict_proba(test_features)
-        print(class_pred[0:5])
+        print(class_pred[0:10])
         class_probs[l] = [p[1] for p in class_pred]
     # extract maximum prob for each element of test features and assign to that label
     num_testfs = len(test_features)
@@ -213,7 +225,7 @@ def SVM_classifier(train_features, train_labels, test_features, is_linear, svm_l
             cprob = class_probs[l][ii]
             if cprob > max_probs[ii]:
                 predicted_categories[ii] = l
-                max_probs[ii] = cprob
+                max_probs[ii] = cprob'''
     return predicted_categories
 
 def tinyImages(train_features, test_features, train_labels, test_labels, label_dict = None):
@@ -308,15 +320,15 @@ def main():
         print(runtime)
         sys.exit(1)'''
 
-    if os.path.exists('../vocab1.pkl'):
+    '''if os.path.exists('../vocab1.pkl'):
         vocab = []
         with open('../vocab1.pkl', 'rb') as f:
             vocab = pickle.load(f)
         train_fs = [computeBow(tf, vocab, 'surf') for tf in train_features]
         test_fs = [computeBow(tf, vocab, 'surf') for tf in test_features]
         start = timeit.default_timer()
-        lin = False
-        c = .1
+        lin = True
+        c = .01
         predicted = SVM_classifier(train_fs, train_labels, test_fs, lin, c)
         accuracy = []
         runtime = []
@@ -324,14 +336,14 @@ def main():
         runtime.append(timeit.default_timer() - start)
         print(accuracy)
         print(runtime)
-        sys.exit(1)
+        sys.exit(1)'''
     
     #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
-    dict_size = 20
+    dict_size = 50
     feature_type = "surf"
     clustering_type = "kmeans"
     vocab = buildDict(train_features, dict_size, feature_type, clustering_type)
-    pickle.dump(vocab, open( "../vocab1.pkl", "wb" ))
+    pickle.dump(vocab, open( "../surfinfk50.pkl", "wb" ))
     
 
 if __name__ == "__main__":
