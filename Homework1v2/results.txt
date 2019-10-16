@@ -17,3 +17,5 @@ SIFT			inf			   kmeans		  SVM				  RBF		 .439	.1	   50
 "															"	  Linear	 .462	.1	   50
 "																		"	 .452	.01	   50
 "																		"	 .457	.001   50
+SURF			inf			   kmeans		  KNN				---			 .405	---	   50
+SURF(ext)		inf			   kmeans		  KNN				---			 .455	---	   100

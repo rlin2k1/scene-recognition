@@ -15,7 +15,7 @@ def imresize(input_image, target_size):
     output_image = cv2.resize(input_image, dim)
     mean, std = cv2.meanStdDev(output_image)
     output_image -= mean[0]
-    return output_image /= std[0]
+    return output_image / std[0]
 
 def reportAccuracy(true_labels, predicted_labels, label_dict = None):
     # generates and returns the accuracy of a model
@@ -78,7 +78,6 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
         return None
 
     print(len(desc))
-    #print("Before")
     vocabulary = [[]] * dict_size
     if clustering_type == "kmeans":
         kmeans = cluster.KMeans(n_clusters=dict_size).fit(desc)
@@ -118,7 +117,7 @@ def computeBow(image, vocabulary, feature_type):
         if des1 is None:
             return bow
     elif feature_type == "surf":
-        surf = cv2.xfeatures2d.SURF_create(extended=True)
+        surf = cv2.xfeatures2d.SURF_create()#extended=True)
         _, des1 = surf.detectAndCompute(image,None)
         if des1 is None:
             return bow
@@ -133,12 +132,12 @@ def computeBow(image, vocabulary, feature_type):
 
     for x in des1:
         bow[np.array(np.linalg.norm(x - vocabulary, axis=1)).argmin()] += 1
-    return np.array(bow) * 4000 / (len(vocabulary) * len(vocabulary[0]))
-
-    # still need to normalize!!!
-    #return [np.abs(np.linalg.norm(x - vocabulary)).argmin(0) for x in des1]
-    
-    #return Bow
+    # compared this normalization strategy to dividing by the total number of words
+    # in bow representation and this performed better
+    #npbow = np.array(bow).astype(np.float32)
+    #return npbow / np.sum(bow)
+    #return np.array(bow) * 4000.0 / (len(vocabulary) * len(vocabulary[0]))
+    return np.array(bow) # * 65536.0 / (len(image) * len(image[0]))
 
 # remember that the following two functions were in classifiers.py to begin with!
 def KNN_classifier(train_features, train_labels, test_features, num_neighbors):
@@ -239,7 +238,7 @@ def main():
     train_labels = []
     test_labels = []
     # Slice Label Dict to Improve Testing Speed
-    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])[0:4]
+    label_dict = sorted([x.lower() for x in os.listdir(rootdir + '/train')])
     for tt in os.listdir(rootdir):
         folder = os.path.join(rootdir, tt)
         for f in os.listdir(folder):
@@ -256,20 +255,20 @@ def main():
 
     print('Done reading in all images')
 
-    fname = "../surfextinfk100.pkl"
+    fname = "../siftinfk50.pkl"
     # If there's a saved vocabulary, assume everything is good and use it for classification
     if os.path.exists(fname):
         vocab = []
         with open(fname, 'rb') as f:
             vocab = pickle.load(f)
         print("Reusing saved buildDict output")
-        train_fs = [computeBow(tf, vocab, 'surf') for tf in train_features]
-        test_fs = [computeBow(tf, vocab, 'surf') for tf in test_features]
+        train_fs = [computeBow(tf, vocab, 'sift') for tf in train_features]
+        test_fs = [computeBow(tf, vocab, 'sift') for tf in test_features]
         start = timeit.default_timer()
         lin = True
         c = .1
-        predicted = SVM_classifier(train_fs, train_labels, test_fs, lin, c)
-        #predicted = KNN_classifier(train_fs, train_labels, test_fs, 9)
+        #predicted = SVM_classifier(train_fs, train_labels, test_fs, lin, c)
+        predicted = KNN_classifier(train_fs, train_labels, test_fs, 6)
         accuracy = []
         runtime = []
         accuracy.append(reportAccuracy(test_labels, predicted))
