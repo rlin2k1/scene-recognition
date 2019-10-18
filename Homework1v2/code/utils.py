@@ -268,7 +268,7 @@ def main():
 
     print('Done reading in all images')
 
-    fname = "../surfextinfk20.pkl"
+    fname = "../siftinfk50.pkl"
     # If there's a saved vocabulary, assume everything is good and use it for classification
     if os.path.exists(fname):
         vocab = []
@@ -311,11 +311,11 @@ def main():
         sys.exit(1)
     
     #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
-    dict_size = 20
-    feature_type = "surf"
+    dict_size = 50
+    feature_type = "sift"
     clustering_type = "kmeans"
     vocab = buildDict(train_features, dict_size, feature_type, clustering_type)
-    pickle.dump(vocab, open("../surfextinfk20.pkl", "wb" ))
+    pickle.dump(vocab, open("../siftinfk50.pkl", "wb" ))
     
 
 if __name__ == "__main__":
