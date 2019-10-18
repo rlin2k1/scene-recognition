@@ -6,6 +6,7 @@ import sys
 from collections import defaultdict
 from sklearn import neighbors, svm, cluster, multiclass
 import pickle
+import random
 np.set_printoptions(threshold=sys.maxsize)
 
 def imresize(input_image, target_size):
@@ -48,9 +49,7 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
     desc = []
     if feature_type == "sift":
         for image in train_images:
-            # double check later that this restriction makes sense
-            # nfeatures=25
-            sift = cv2.xfeatures2d.SIFT_create()
+            sift = cv2.xfeatures2d.SIFT_create() if clustering_type == "kmeans" else cv2.xfeatures2d.SIFT_create(nfeatures=27)
             _, des1 = sift.detectAndCompute(image,None)
             if des1 is None:
                 continue
@@ -58,16 +57,19 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
                 desc.append(i)
     elif feature_type == "surf":
         for image in train_images:
-            # formerly 50
-            surf = cv2.xfeatures2d.SURF_create(extended=True)
+            surf = cv2.xfeatures2d.SURF_create(extended=True) if clustering_type == "kmeans" else cv2.xfeatures2d.SURF_create(hessianThreshold=500, extended=True)
             _, des1 = surf.detectAndCompute(image,None)
             if des1 is None:
                 continue
+            nf = 27
+            if len(des1) > nf and clustering_type != "kmeans":
+                random.shuffle(des1)
+                des1 = des1[:nf]
             for i in des1:
                 desc.append(i)
     elif feature_type == "orb":
         for image in train_images:
-            orb = cv2.ORB_create(nfeatures=30)
+            orb = cv2.ORB_create() if clustering_type == "kmeans" else cv2.ORB_create(nfeatures=30)
             kp = orb.detect(image, None)
             _, des1 = orb.compute(image, kp)
             if des1 is None:
@@ -80,7 +82,7 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
     print(len(desc))
     vocabulary = [[]] * dict_size
     if clustering_type == "kmeans":
-        kmeans = cluster.KMeans(n_clusters=dict_size).fit(desc)
+        kmeans = cluster.KMeans(n_clusters=dict_size, n_jobs=-1).fit(desc)
         vocabulary = kmeans.cluster_centers_
     elif clustering_type == "hierarchical":
         aggc = cluster.AgglomerativeClustering(n_clusters=dict_size).fit(desc)
@@ -117,7 +119,7 @@ def computeBow(image, vocabulary, feature_type):
         if des1 is None:
             return bow
     elif feature_type == "surf":
-        surf = cv2.xfeatures2d.SURF_create()#extended=True)
+        surf = cv2.xfeatures2d.SURF_create(extended=True)
         _, des1 = surf.detectAndCompute(image,None)
         if des1 is None:
             return bow
@@ -136,8 +138,7 @@ def computeBow(image, vocabulary, feature_type):
     # in bow representation and this performed better
     #npbow = np.array(bow).astype(np.float32)
     #return npbow / np.sum(bow)
-    #return np.array(bow) * 4000.0 / (len(vocabulary) * len(vocabulary[0]))
-    return np.array(bow) # * 65536.0 / (len(image) * len(image[0]))
+    return np.array(bow) * 65536.0 / (len(image) * len(image[0]))
 
 # remember that the following two functions were in classifiers.py to begin with!
 def KNN_classifier(train_features, train_labels, test_features, num_neighbors):
@@ -178,15 +179,27 @@ def SVM_classifier(train_features, train_labels, test_features, is_linear, svm_l
     # predicted_categories is an m x 1 array, where each entry is an integer
     # indicating the predicted category for each test image.
     krnl = 'linear' if is_linear else 'rbf'
+    g='scale'
+    if krnl == 'rbf' and len(train_features):
+        if len(train_features[0] == 128):
+            if svm_lambda == .008:
+                print("hi. length 128. using g = .0004")
+                g = .0004
+            else:
+                print("hi. length 128. using g = .0003")
+                g = .0003
+        elif len(train_features[0] == 32):
+            print("hi. length 32. using g = .0011")
+            g = .0011
     # According to the documentation, the default, ovr, "trains n_classes 
     # one-vs-rest classifiers", precisely fulfilling the spec's goal
-    clf = multiclass.OneVsRestClassifier(svm.SVC(C=svm_lambda, kernel=krnl, gamma='scale'), n_jobs=-1)
+    clf = multiclass.OneVsRestClassifier(svm.SVC(C=svm_lambda, kernel=krnl, gamma=g), n_jobs=-1)
     print('Starting to fit')
     clf.fit(train_features, train_labels)
     print('Starting to predict')
     predicted_categories = clf.predict(test_features)
-    print(predicted_categories[0:100])
-    print(len(predicted_categories))
+    #print(predicted_categories[0:100])
+    #print(len(predicted_categories))
     return predicted_categories
 
 def tinyImages(train_features, test_features, train_labels, test_labels, label_dict = None):
@@ -255,34 +268,54 @@ def main():
 
     print('Done reading in all images')
 
-    fname = "../siftinfk50.pkl"
+    fname = "../surfextinfk20.pkl"
     # If there's a saved vocabulary, assume everything is good and use it for classification
     if os.path.exists(fname):
         vocab = []
         with open(fname, 'rb') as f:
             vocab = pickle.load(f)
         print("Reusing saved buildDict output")
-        train_fs = [computeBow(tf, vocab, 'sift') for tf in train_features]
-        test_fs = [computeBow(tf, vocab, 'sift') for tf in test_features]
-        start = timeit.default_timer()
-        lin = True
-        c = .1
-        #predicted = SVM_classifier(train_fs, train_labels, test_fs, lin, c)
-        predicted = KNN_classifier(train_fs, train_labels, test_fs, 6)
+        trfsname = "../trfs_" + fname[3:]
+        tefsname = "../tefs_" + fname[3:]
+        train_fs = []
+        test_fs = []
+        if os.path.exists(trfsname) and os.path.exists(tefsname):
+            with open(trfsname, 'rb') as f:
+                train_fs = pickle.load(f)
+            with open(tefsname, 'rb') as f:
+                test_fs = pickle.load(f)
+            print("Reusing saved BOW representations")
+        else:
+            train_fs = [computeBow(tf, vocab, 'orb') for tf in train_features]
+            test_fs = [computeBow(tf, vocab, 'orb') for tf in test_features]
+            pickle.dump(train_fs, open(trfsname, 'wb'))
+            pickle.dump(test_fs, open(tefsname, 'wb'))
         accuracy = []
         runtime = []
-        accuracy.append(reportAccuracy(test_labels, predicted))
-        runtime.append(timeit.default_timer() - start)
+        lin = False
+        for c in [.01 * x for x in range(1, 8)]: #[.0001 * (10**x) for x in range(6)]: #[2.7 + .1 * x for x in range(8)]: #[1.06 + .1 * x for x in range(20)]:
+            #for g in [.0001 * x for x in range(1, 10)]: #[.000001 * (10**x) for x in range(8)]: #[38 + 10 * x for x in range(5)]: #['scale']: #[1.0 * x for x in range(1,75)]: #[.00001 * (10**x) for x in range(7)]: #['scale']: #[.0001 * x for x in range(1, 8)]:
+            print("C = {}, gamma = {}".format(c, g))
+            start = timeit.default_timer()
+            # delete last param later! just using it for testing purposes!!!
+            predicted = SVM_classifier(train_fs, train_labels, test_fs, lin, c)
+            #predicted = KNN_classifier(train_fs, train_labels, test_fs, 6)
+            acc = reportAccuracy(test_labels, predicted)
+            print(acc)
+            accuracy.append(acc)
+            runtime.append(timeit.default_timer() - start)
         print(accuracy)
         print(runtime)
+        print(sorted(accuracy))
+        print(max(accuracy))
         sys.exit(1)
     
     #print(tinyImages(train_features, test_features, train_labels, test_labels, label_dict))
-    dict_size = 50
-    feature_type = "sift"
+    dict_size = 20
+    feature_type = "surf"
     clustering_type = "kmeans"
     vocab = buildDict(train_features, dict_size, feature_type, clustering_type)
-    pickle.dump(vocab, open("../siftinfk50.pkl", "wb" ))
+    pickle.dump(vocab, open("../surfextinfk20.pkl", "wb" ))
     
 
 if __name__ == "__main__":
