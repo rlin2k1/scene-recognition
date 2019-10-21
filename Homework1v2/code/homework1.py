@@ -77,7 +77,7 @@ if __name__ == "__main__":
             rep = computeBow(image, vocab, features[i])
             test_rep.append(rep)
         np.save(SAVEPATH + 'bow_test_' + str(i) + '.npy', np.asarray(test_rep)) # Save the representations for vocabulary i
-        train_rep = [] # reset the list to save the following vocabulary
+        test_rep = [] # reset the list to save the following vocabulary
         
     
     # Use BOW features to classify the images with a KNN classifier
