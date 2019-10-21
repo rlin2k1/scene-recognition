@@ -4,6 +4,8 @@ import numpy as np
 import timeit, time
 from sklearn import neighbors, svm, cluster, preprocessing
 
+from collections import defaultdict
+import random
 import sys
 np.set_printoptions(threshold=sys.maxsize)
 
