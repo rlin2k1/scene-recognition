@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 import timeit, time
-from sklearn import neighbors, svm, cluster, preprocessing
+from sklearn import neighbors, svm, cluster, preprocessing, multiclass
 
 from collections import defaultdict
 import random
