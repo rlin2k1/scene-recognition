@@ -77,20 +77,20 @@ def SVM_classifier(train_features, train_labels, test_features, is_linear, svm_l
     if krnl == 'rbf' and len(train_features):
         if len(train_features[0] == 128):
             if svm_lambda == .008:
-                print("g = .0004")
+                # print("g = .0004")
                 g = .0004
             else:
-                print("g = .0003")
+                # print("g = .0003")
                 g = .0003
         elif len(train_features[0] == 32):
-            print("g = .0011")
+            # print("g = .0011")
             g = .0011
     # According to the documentation, the default, ovr, "trains n_classes 
     # one-vs-rest classifiers", precisely fulfilling the spec's goal
     clf = multiclass.OneVsRestClassifier(svm.SVC(C=svm_lambda, kernel=krnl, gamma=g), n_jobs=-1)
-    print('Starting to fit')
+    # print('Starting to fit')
     clf.fit(train_features, train_labels)
-    print('Starting to predict')
+    # print('Starting to predict')
     predicted_categories = clf.predict(test_features)
     #print(predicted_categories[0:100])
     #print(len(predicted_categories))
@@ -136,7 +136,7 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
     desc = []
     if feature_type == "sift":
         for image in train_images:
-            sift = cv2.xfeatures2d.SIFT_create() if clustering_type == "kmeans" else cv2.xfeatures2d.SIFT_create(nfeatures=27)
+            sift = cv2.xfeatures2d.SIFT_create(nfeatures=25)
             _, des1 = sift.detectAndCompute(image,None)
             if des1 is None:
                 continue
@@ -144,19 +144,19 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
                 desc.append(i)
     elif feature_type == "surf":
         for image in train_images:
-            surf = cv2.xfeatures2d.SURF_create(extended=True) if clustering_type == "kmeans" else cv2.xfeatures2d.SURF_create(hessianThreshold=500, extended=True)
+            surf = cv2.xfeatures2d.SURF_create(hessianThreshold=500, extended=True)
             _, des1 = surf.detectAndCompute(image,None)
             if des1 is None:
                 continue
-            nf = 27
-            if len(des1) > nf and clustering_type != "kmeans":
+            nf = 25
+            if len(des1) > nf:
                 random.shuffle(des1)
                 des1 = des1[:nf]
             for i in des1:
                 desc.append(i)
     elif feature_type == "orb":
         for image in train_images:
-            orb = cv2.ORB_create() if clustering_type == "kmeans" else cv2.ORB_create(nfeatures=30)
+            orb = cv2.ORB_create(nfeatures=25)
             _, des1 = orb.compute(image, orb.detect(image, None))
             if des1 is None:
                 continue
@@ -167,7 +167,7 @@ def buildDict(train_images, dict_size, feature_type, clustering_type):
 
     vocabulary = [[]] * dict_size
     if clustering_type == "kmeans":
-        kmeans = cluster.KMeans(n_clusters=dict_size).fit(desc) #, n_jobs=-1).fit(desc)
+        kmeans = cluster.KMeans(n_clusters=dict_size, n_jobs=4).fit(desc) #, n_jobs=-1).fit(desc)
         vocabulary = kmeans.cluster_centers_
     elif clustering_type == "hierarchical":
         aggc = cluster.AgglomerativeClustering(n_clusters=dict_size).fit(desc)

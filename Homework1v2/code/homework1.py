@@ -54,7 +54,7 @@ if __name__ == "__main__":
     for feature in ['sift', 'surf', 'orb']:
         for algo in ['kmeans', 'hierarchical']:
             for dict_size in [20, 50]:
-                print("{}, {}, {}".format(feature, algo, dict_size))
+                # print("{}, {}, {}".format(feature, algo, dict_size))
                 vocabulary = buildDict(train_images, dict_size, feature, algo)
                 filename = 'voc_' + feature + '_' + algo + '_' + str(dict_size) + '.npy'
                 np.save(SAVEPATH + filename, np.asarray(vocabulary))
@@ -67,11 +67,11 @@ if __name__ == "__main__":
     features = ['sift'] * 4 + ['surf'] * 4 + ['orb'] * 4 # Order in which features were used 
     # for vocabulary generation
     
-    print("computeBow")
+    # print("computeBow")
 
     # You need to write ComputeBow()
     for i, vocab in enumerate(vocabularies):
-        print(i)
+        # print(i)
         for image in train_images: # Compute the BOW representation of the training set
             rep = computeBow(image, vocab, features[i]) # Rep is a list of descriptors for a given image
             train_rep.append(rep)
@@ -89,11 +89,11 @@ if __name__ == "__main__":
     knn_accuracies = []
     knn_runtimes = []
 
-    print("KNN")
+    # print("KNN")
 
     # Your code below, eg:
     for i, vocab in enumerate(vocabularies):
-        print(i)
+        # print(i)
         train_rep = np.load(SAVEPATH + 'bow_train_' + str(i) + '.npy')
         test_rep = np.load(SAVEPATH + 'bow_test_' + str(i) + '.npy')
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
         knn_accuracies.append(acc)
         knn_runtimes.append(timeit.default_timer() - start)
 
-    print(knn_accuracies)
+    # print(knn_accuracies)
     
     np.save(SAVEPATH+'knn_accuracies.npy', np.asarray(knn_accuracies)) # Save the accuracies in the Results/ directory
     np.save(SAVEPATH+'knn_runtimes.npy', np.asarray(knn_runtimes)) # Save the runtimes in the Results/ directory
@@ -112,11 +112,11 @@ if __name__ == "__main__":
     lin_accuracies = []
     lin_runtimes = []
 
-    print("linear SVM")
+    # print("linear SVM")
     
     # Your code below
     for i, vocab in enumerate(vocabularies):
-        print(i)
+        # print(i)
         train_rep = np.load(SAVEPATH + 'bow_train_' + str(i) + '.npy')
         test_rep = np.load(SAVEPATH + 'bow_test_' + str(i) + '.npy')
 
@@ -128,7 +128,7 @@ if __name__ == "__main__":
 
     np.save(SAVEPATH+'lin_accuracies.npy', np.asarray(lin_accuracies)) # Save the accuracies in the Results/ directory
     np.save(SAVEPATH+'lin_runtimes.npy', np.asarray(lin_runtimes)) # Save the runtimes in the Results/ directory
-    print(lin_accuracies)
+    # print(lin_accuracies)
 
     # Use BOW features to classify the images with 15 Kernel SVM classifiers
     rbf_accuracies = []
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     
     # Your code below
     for i, vocab in enumerate(vocabularies):
-        print(i)
+        # print(i)
         train_rep = np.load(SAVEPATH + 'bow_train_' + str(i) + '.npy')
         test_rep = np.load(SAVEPATH + 'bow_test_' + str(i) + '.npy')
 
@@ -148,4 +148,4 @@ if __name__ == "__main__":
     
     np.save(SAVEPATH +'rbf_accuracies.npy', np.asarray(rbf_accuracies)) # Save the accuracies in the Results/ directory
     np.save(SAVEPATH +'rbf_runtimes.npy', np.asarray(rbf_runtimes)) # Save the runtimes in the Results/ directory
-    print(rbf_accuracies)
+    # print(rbf_accuracies)
