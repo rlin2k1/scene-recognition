@@ -1,1 +1,1 @@
-# CS188ComputerVision
+# Scene Recognition
